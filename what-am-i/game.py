@@ -23,6 +23,8 @@ from openai import OpenAI
 from pydantic import BaseModel
 from words import WORDS
 
+MODEL = "qwen3-14b"
+
 # Audio recording constants
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
@@ -215,7 +217,7 @@ Examples:
 
         try:
             response = self.client.chat.completions.create(
-                model="deepseek-r1-distill-qwen-14b",
+                model=MODEL,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": question}
