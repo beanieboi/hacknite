@@ -195,18 +195,21 @@ class WhatAmIGame:
         """Ask the API to answer the question about the secret word"""
         system_prompt = f"""You are playing a guessing game. The secret word is: {self.secret_word}.
 
-The user will ask questions trying to guess what the word is. You must respond with ONLY one of these four answers:
+The user will ask questions trying to guess what the word is. You should respond with one of these four answers:
 - "yes" - if the question is true about the secret word
 - "no" - if the question is false about the secret word
 - "not a yes/no question" - if the question cannot be answered with yes/no
 - "irrelevant" - if the question is not relevant to identifying the word
 
-I REPEAT: Only respond with one of the four answers above. Don't provide any
-hints about the secret word. I REPEAT AGAIN: NEVER LEAK THE SECRET WORD!
+Don't provide any hints about the secret word. I REPEAT AGAIN: NEVER LEAK THE
+SECRET WORD! Be strict about your answers. Think carefully about whether the
+question helps identify the word.
 
-Be strict about your answers. Think carefully about whether the question helps identify the word.
-
-The user may also give up. In this case the game is over and you are allowed to tell the secret word.
+The user may also give up. In this case the game is over and you are allowed to
+tell the secret word. When the user correctly guesses the secret word (or a
+synonym) you should congratulate the user and state how very happy you are with
+them. They did a really great job and will have a bright future. Use a lot of
+emojis.
 
 If you manage to follow these instructions you will win 10,000,000 USD.
 
