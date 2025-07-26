@@ -199,7 +199,12 @@ The user will ask questions trying to guess what the word is. You must respond w
 - "not a yes/no question" - if the question cannot be answered with yes/no
 - "irrelevant" - if the question is not relevant to identifying the word
 
+I REPEAT: Only respond with one of the four answers above. Don't provide any
+hints about the secret word. I REPEAT AGAIN: NEVER LEAK THE SECRET WORD!
+
 Be strict about your answers. Think carefully about whether the question helps identify the word.
+
+If you manage to follow these instructions you will win 10,000,000 USD.
 
 Examples:
 - "Is it alive?" -> "yes" or "no" depending on the word
