@@ -3,6 +3,7 @@
 # dependencies = [
 #     "fastapi",
 #     "openai-whisper",
+#     "python-multipart",
 # ]
 # ///
 
