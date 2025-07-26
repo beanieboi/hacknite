@@ -21,7 +21,7 @@ model = None
 @app.on_event("startup")
 async def startup_event():
     global model
-    model = whisper.load_model("tiny")
+    model = whisper.load_model("medium")
 
 @app.post("/")
 async def transcription(file: UploadFile):
