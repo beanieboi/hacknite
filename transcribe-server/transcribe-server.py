@@ -4,6 +4,7 @@
 #     "fastapi",
 #     "openai-whisper",
 #     "python-multipart",
+#     "uvicorn",
 # ]
 # ///
 
@@ -12,6 +13,7 @@ import os
 
 from fastapi import FastAPI, File, UploadFile
 import whisper
+import uvicorn
 
 app = FastAPI()
 model = None
@@ -30,3 +32,6 @@ async def transcription(file: UploadFile):
         file.file.close()
         result = model.transcribe(temp_file.name)["text"]
         return result
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
