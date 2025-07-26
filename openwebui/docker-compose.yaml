@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: no
+    ports:
+      - "3000:8080"
+    networks:
+      - openwebui_network
+    environment:
+      - ENABLE_PERSISTENT_CONFIG=False
+      - WEBUI_AUTH=False
+      - OPENAI_API_BASE_URL=https://inference.home.abwesend.com/v1
+      - OPENAI_API_KEY=does-not-matter
+
+networks:
+  openwebui_network:
+    driver: bridge
