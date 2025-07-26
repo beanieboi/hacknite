@@ -25,7 +25,7 @@ async def startup_event():
 
 @app.post("/")
 async def transcription(file: UploadFile):
-    with tempfile.NamedTemporaryFile(suffix=".wav") as temp_file:
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
         while contents := file.file.read(1024 * 1024):
             temp_file.write(contents)
         temp_file.flush()
