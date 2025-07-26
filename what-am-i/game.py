@@ -16,6 +16,9 @@ import wave
 import numpy as np
 import time
 import requests
+import re
+import sys
+
 from openai import OpenAI
 from pydantic import BaseModel
 from words import WORDS
@@ -27,6 +30,53 @@ CHANNELS = 1
 RATE = 44100
 SILENCE_THRESHOLD = 500  # Amplitude threshold for silence detection
 SILENCE_DURATION = 2.0   # Seconds of silence before stopping
+import os
+
+from pyaudio import PyAudio
+
+class suppress_pyaudio_output:
+    """
+    PyAudio is noisy af every time you initialise it, which makes reading the
+    log output rather difficult.  The output appears to be being made by the
+    C internals, so I can't even redirect the logs with Python's logging
+    facility.  Therefore the nuclear option was selected: swallow all stderr
+    and stdout for the duration of PyAudio's use.
+
+    Lifted and adapted from StackOverflow:
+      https://stackoverflow.com/questions/11130156/
+    """
+
+    def __init__(self):
+
+        # Open a pair of null files
+        self.null_fds = [os.open(os.devnull, os.O_RDWR) for x in range(2)]
+
+        # Save the actual stdout (1) and stderr (2) file descriptors.
+        self.save_fds = [os.dup(1), os.dup(2)]
+
+        self.pyaudio = None
+
+    def __enter__(self) -> PyAudio:
+
+        # Assign the null pointers to stdout and stderr.
+        os.dup2(self.null_fds[0], 1)
+        os.dup2(self.null_fds[1], 2)
+
+        self.pyaudio = PyAudio()
+
+        return self.pyaudio
+
+    def __exit__(self, *_):
+
+        self.pyaudio.terminate()
+
+        # Re-assign the real stdout/stderr back to (1) and (2)
+        os.dup2(self.save_fds[0], 1)
+        os.dup2(self.save_fds[1], 2)
+
+        # Close all file descriptors
+        for fd in self.null_fds + self.save_fds:
+            os.close(fd)
 
 def calculate_rms(data):
     """Calculate RMS (Root Mean Square) amplitude of audio data."""
@@ -35,51 +85,48 @@ def calculate_rms(data):
 
 def record_audio_input():
     """Record audio input until silence is detected."""
-    # Initialize PyAudio
-    p = pyaudio.PyAudio()
-    
-    # Open stream
-    stream = p.open(format=FORMAT,
-                    channels=CHANNELS,
-                    rate=RATE,
-                    input=True,
-                    frames_per_buffer=CHUNK)
-    
+    # Initialize PyAudio with suppressed error output
     print("🎤 Recording... Speak your question!")
     print(f"Will stop after {SILENCE_DURATION} seconds of silence")
+    with suppress_pyaudio_output():
+        p = pyaudio.PyAudio()
     
-    frames = []
-    silence_start = None
-    recording = True
-    
-    try:
-        while recording:
-            data = stream.read(CHUNK)
-            frames.append(data)
-            
-            # Calculate amplitude
-            rms = calculate_rms(data)
-            
-            # Check for silence
-            if rms < SILENCE_THRESHOLD:
-                if silence_start is None:
-                    silence_start = time.time()
-                elif time.time() - silence_start >= SILENCE_DURATION:
-                    recording = False
-            else:
-                silence_start = None
-            
-            # Print current amplitude level
-            print(f"Amplitude: {rms:6.0f} {'(SILENCE)' if rms < SILENCE_THRESHOLD else ''}", end='\r')
-    
-    except KeyboardInterrupt:
-        print("\nRecording stopped by user.")
-    
-    finally:
-        # Stop and close the stream
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
+        # Open stream
+        stream = p.open(format=FORMAT,
+                        channels=CHANNELS,
+                        rate=RATE,
+                        input=True,
+                        frames_per_buffer=CHUNK)
+
+        frames = []
+        silence_start = None
+        recording = True
+
+        try:
+            while recording:
+                data = stream.read(CHUNK)
+                frames.append(data)
+
+                # Calculate amplitude
+                rms = calculate_rms(data)
+
+                # Check for silence
+                if rms < SILENCE_THRESHOLD:
+                    if silence_start is None:
+                        silence_start = time.time()
+                    elif time.time() - silence_start >= SILENCE_DURATION:
+                        recording = False
+                else:
+                    silence_start = None
+
+        except KeyboardInterrupt:
+            print("Recording stopped by user.")
+
+        finally:
+            # Stop and close the stream
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
     
     # Save the recorded audio temporarily
     timestamp = int(time.time())
@@ -92,7 +139,7 @@ def record_audio_input():
     wf.writeframes(b''.join(frames))
     wf.close()
     
-    print(f"\n🎵 Recording complete! Transcribing...")
+    print(f"🎵 Recording complete! Transcribing...")
     
     # Transcribe audio using HTTP API
     try:
@@ -124,6 +171,10 @@ def record_audio_input():
         if os.path.exists(filename):
             os.remove(filename)
         return None
+
+def strip_thinking_traces(text: str) -> str:
+    """Remove <think>...</think> tags and their content from the text."""
+    return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
 
 class GameResponse(BaseModel):
     answer: str
@@ -166,7 +217,9 @@ Examples:
                 ],
             )
             
-            return response.choices[0].message.content.strip().lower()
+            response_content = response.choices[0].message.content
+            cleaned_content = strip_thinking_traces(response_content)
+            return cleaned_content.strip().lower()
 
         except Exception as e:
             print(f"Error calling API: {e}")
